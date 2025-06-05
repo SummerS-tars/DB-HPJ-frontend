@@ -263,10 +263,26 @@ const fetchTags = async () => {
     })
 
     const response = await evaluationTagApi.getTags(params)
-    tags.value = response.data.content
-    totalElements.value = response.data.totalElements
+    // Fix data access path to match backend response structure
+    const data = response.data.data || response.data
+    
+    // Handle both paginated and non-paginated responses
+    if (data.content) {
+      // Paginated response
+      tags.value = data.content
+      totalElements.value = data.totalElements
+    } else if (Array.isArray(data)) {
+      // Simple array response
+      tags.value = data
+      totalElements.value = data.length
+    } else {
+      // Fallback
+      tags.value = []
+      totalElements.value = 0
+    }
   } catch (error) {
     console.error('Failed to fetch tags:', error)
+    ElMessage.error('获取评估标签失败')
   } finally {
     loading.value = false
   }

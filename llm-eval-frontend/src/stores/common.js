@@ -21,7 +21,7 @@ export const useCommonStore = defineStore('common', {
       this.loading.versions = true
       try {
         const response = await versionApi.getVersions()
-        this.versions = response.data
+        this.versions = response.data.data || response.data
       } catch (error) {
         console.error('Failed to fetch versions:', error)
       } finally {
@@ -33,7 +33,7 @@ export const useCommonStore = defineStore('common', {
       this.loading.tags = true
       try {
         const response = await tagApi.getTags()
-        this.tags = response.data
+        this.tags = response.data.data || response.data
       } catch (error) {
         console.error('Failed to fetch tags:', error)
       } finally {
@@ -44,8 +44,9 @@ export const useCommonStore = defineStore('common', {
     async createVersion(version) {
       try {
         const response = await versionApi.createVersion(version)
-        this.versions.push(response.data)
-        return response.data
+        const newVersion = response.data.data || response.data
+        this.versions.push(newVersion)
+        return newVersion
       } catch (error) {
         console.error('Failed to create version:', error)
         throw error
@@ -55,8 +56,9 @@ export const useCommonStore = defineStore('common', {
     async createTag(tag) {
       try {
         const response = await tagApi.createTag(tag)
-        this.tags.push(response.data)
-        return response.data
+        const newTag = response.data.data || response.data
+        this.tags.push(newTag)
+        return newTag
       } catch (error) {
         console.error('Failed to create tag:', error)
         throw error
