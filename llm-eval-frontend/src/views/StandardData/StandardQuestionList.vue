@@ -301,7 +301,7 @@ const newTagName = ref('')
 const previewData = ref([])
 
 const filters = reactive({
-  type: '',
+  type: 'OBJECTIVE',
   status: '',
   version: '',
   tags: '',
@@ -352,9 +352,11 @@ const fetchQuestions = async () => {
 }
 
 const resetFilters = () => {
-  Object.keys(filters).forEach(key => {
-    filters[key] = ''
-  })
+  filters.type = 'OBJECTIVE' // Reset to default
+  filters.status = ''
+  filters.version = ''
+  filters.tags = ''
+  filters.originalRawQuestionId = ''
   fetchQuestions()
 }
 
