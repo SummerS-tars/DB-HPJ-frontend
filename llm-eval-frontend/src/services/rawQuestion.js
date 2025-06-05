@@ -5,10 +5,11 @@ export const rawQuestionApi = {
   importQuestions(file, sourcePlatform = 'stackoverflow') {
     const formData = new FormData()
     formData.append('file', file)
-    return api.post(`/raw-questions/import?sourcePlatform=${sourcePlatform}`, formData, {
+    return api.post('/raw-questions/import', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
-      }
+      },
+      params: { sourcePlatform }
     })
   },
 
@@ -43,15 +44,26 @@ export const rawAnswerApi = {
   importAnswers(file, sourcePlatform = 'stackoverflow') {
     const formData = new FormData()
     formData.append('file', file)
-    return api.post(`/raw-answers/import?sourcePlatform=${sourcePlatform}`, formData, {
+    return api.post('/raw-answers/import', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
-      }
+      },
+      params: { sourcePlatform }
     })
   },
 
   // Get raw answers list
   getAnswers(params = {}) {
     return api.get('/raw-answers', { params })
+  },
+
+  // Get single raw answer
+  getAnswer(id) {
+    return api.get(`/raw-answers/${id}`)
+  },
+
+  // Get answers for a raw question
+  getAnswersForQuestion(questionId, params) {
+    return api.get(`/raw-questions/${questionId}/answers`, { params })
   }
 } 

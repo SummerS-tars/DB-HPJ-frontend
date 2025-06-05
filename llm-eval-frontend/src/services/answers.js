@@ -30,17 +30,19 @@ export const candidateAnswerApi = {
 
 export const standardAnswerApi = {
   // Get standard answers list
-  getAnswers(params = {}) {
+  async getAnswers(params) {
     return api.get('/std-answers', { params })
   },
-
-  // Get standard answers for a specific question
-  getAnswersForQuestion(questionId, params = {}) {
+  
+  async getAnswer(id) {
+    return api.get(`/std-answers/${id}`)
+  },
+  
+  async getAnswersForQuestion(questionId, params) {
     return api.get(`/std-questions/${questionId}/std-answers`, { params })
   },
-
-  // Update standard answer
-  updateAnswer(id, data) {
+  
+  async updateAnswer(id, data) {
     return api.patch(`/std-answers/${id}`, data)
   }
 } 

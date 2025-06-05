@@ -42,7 +42,9 @@
         :data="answers" 
         :loading="loading"
         style="width: 100%; margin-top: 20px"
+        @selection-change="handleSelectionChange"
       >
+        <el-table-column type="selection" width="55" />
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="stdQuestionId" label="标准问题ID" width="120" />
         <el-table-column prop="type" label="类型" width="100">
@@ -74,28 +76,76 @@
             {{ formatDate(row.createdAt) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="viewAnswer(row)">查看</el-button>
-            <el-button 
-              v-if="row.status === 'PENDING'"
-              size="small" 
-              type="success" 
-              @click="acceptAnswer(row)"
-            >
-              接受
-            </el-button>
-            <el-button 
-              v-if="row.status === 'PENDING'"
-              size="small" 
-              type="danger" 
-              @click="rejectAnswer(row)"
-            >
-              拒绝
-            </el-button>
+            <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+              <el-button size="small" @click="viewAnswer(row)">查看详情</el-button>
+              <el-button 
+                v-if="row.status === 'PENDING'"
+                size="small" 
+                type="success"
+                @click="acceptAnswer(row)"
+              >
+                接受 (创建标准答案)
+              </el-button>
+              <el-button 
+                v-if="row.status === 'PENDING'"
+                size="small" 
+                type="danger"
+                @click="rejectAnswer(row)"
+              >
+                拒绝
+              </el-button>
+              <el-tag 
+                v-else-if="row.status === 'ACCEPTED'"
+                type="success" 
+                size="small"
+              >
+                已接受
+              </el-tag>
+              <el-tag 
+                v-else-if="row.status === 'REJECTED'"
+                type="danger" 
+                size="small"
+              >
+                已拒绝
+              </el-tag>
+            </div>
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- Bulk Operations -->
+      <div v-if="selectedRows.length > 0" class="bulk-operations">
+        <el-alert 
+          :title="`已选择 ${selectedRows.length} 个候选答案`"
+          type="info"
+          :closable="false"
+          style="margin-bottom: 10px"
+        >
+          <template #default>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+              <el-button 
+                size="small" 
+                type="success"
+                @click="bulkAccept"
+                :disabled="!hasPendingSelected"
+              >
+                批量接受 ({{ pendingSelectedCount }})
+              </el-button>
+              <el-button 
+                size="small" 
+                type="danger"
+                @click="bulkReject"
+                :disabled="!hasPendingSelected"
+              >
+                批量拒绝 ({{ pendingSelectedCount }})
+              </el-button>
+              <el-button size="small" @click="clearSelection">清除选择</el-button>
+            </div>
+          </template>
+        </el-alert>
+      </div>
 
       <!-- Pagination -->
       <el-pagination
@@ -214,7 +264,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { candidateAnswerApi } from '@/services/answers'
 
@@ -225,27 +275,114 @@ const showImportDialog = ref(false)
 const showDetailDialog = ref(false)
 const showAcceptDialog = ref(false)
 const importing = ref(false)
-const updating = ref(false)
+const accepting = ref(false)
 const selectedAnswer = ref(null)
+const selectedRows = ref([])
 
 const filters = reactive({
-  type: '',
-  status: ''
+  type: 'OBJECTIVE',
+  status: '',
+  stdQuestionId: ''
 })
 
 const pagination = reactive({
   page: 1,
-  size: 20
+  size: 20,
+  sortBy: 'id',
+  sortDirection: 'asc'
 })
 
 const importForm = reactive({
-  type: 'OBJECTIVE',
-  file: null
+  file: null,
+  type: 'OBJECTIVE'
 })
 
 const acceptForm = reactive({
   score: 8
 })
+
+// Computed properties for bulk operations
+const hasPendingSelected = computed(() => {
+  return selectedRows.value.some(row => row.status === 'PENDING')
+})
+
+const pendingSelectedCount = computed(() => {
+  return selectedRows.value.filter(row => row.status === 'PENDING').length
+})
+
+const handleSelectionChange = (selection) => {
+  selectedRows.value = selection
+}
+
+const clearSelection = () => {
+  selectedRows.value = []
+}
+
+const bulkAccept = async () => {
+  const pendingRows = selectedRows.value.filter(row => row.status === 'PENDING')
+  
+  if (pendingRows.length === 0) {
+    ElMessage.warning('没有待处理的候选答案')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确定要批量接受 ${pendingRows.length} 个候选答案并创建标准答案吗？`,
+      '确认批量接受',
+      { type: 'warning' }
+    )
+
+    accepting.value = true
+    const promises = pendingRows.map(row => 
+      candidateAnswerApi.updateAnswer(row.id, { 
+        status: 'ACCEPTED', 
+        score: 8 // Default score for bulk operations
+      })
+    )
+
+    await Promise.all(promises)
+    ElMessage.success(`成功接受 ${pendingRows.length} 个候选答案`)
+    clearSelection()
+    fetchAnswers()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('Bulk accept failed:', error)
+    }
+  } finally {
+    accepting.value = false
+  }
+}
+
+const bulkReject = async () => {
+  const pendingRows = selectedRows.value.filter(row => row.status === 'PENDING')
+  
+  if (pendingRows.length === 0) {
+    ElMessage.warning('没有待处理的候选答案')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确定要批量拒绝 ${pendingRows.length} 个候选答案吗？`,
+      '确认批量拒绝',
+      { type: 'warning' }
+    )
+
+    const promises = pendingRows.map(row => 
+      candidateAnswerApi.updateAnswer(row.id, { status: 'REJECTED' })
+    )
+
+    await Promise.all(promises)
+    ElMessage.success(`成功拒绝 ${pendingRows.length} 个候选答案`)
+    clearSelection()
+    fetchAnswers()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('Bulk reject failed:', error)
+    }
+  }
+}
 
 const fetchAnswers = async () => {
   loading.value = true

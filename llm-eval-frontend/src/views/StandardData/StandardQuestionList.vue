@@ -142,53 +142,55 @@
       title="导入标准问题"
       width="700px"
     >
+      <el-alert
+        title="导入说明"
+        type="info"
+        style="margin-bottom: 20px"
+        :closable="false"
+      >
+        <p>请上传JSON格式文件，文件应包含标准问题数组，每个问题对象包含以下字段：</p>
+        <ul>
+          <li><strong>originalRawQuestionId</strong>: 必需，关联的原始问题ID</li>
+          <li><strong>type</strong>: 必需，"OBJECTIVE" 或 "SUBJECTIVE"</li>
+          <li><strong>content</strong>: 必需，标准化后的问题内容</li>
+          <li><strong>status</strong>: 可选，默认为 "WAITING_ANSWERS"</li>
+          <li><strong>versionIds</strong>: 可选，版本ID数组</li>
+          <li><strong>tagNames</strong>: 可选，标签名称数组</li>
+        </ul>
+      </el-alert>
+
       <el-form :model="importForm" label-width="150px">
-        <el-form-item label="原始问题ID" required>
-          <el-input 
-            v-model.number="importForm.originalRawQuestionId" 
-            placeholder="必须关联一个原始问题ID"
-            type="number"
-          />
+        <el-form-item label="选择JSON文件">
+          <el-upload
+            ref="uploadRef"
+            :auto-upload="false"
+            :limit="1"
+            accept=".json"
+            :on-change="handleFileChange"
+            :before-upload="beforeUpload"
+          >
+            <el-button type="primary">选择JSON文件</el-button>
+            <template #tip>
+              <div class="el-upload__tip">
+                仅支持JSON格式文件，文件大小不超过10MB
+              </div>
+            </template>
+          </el-upload>
         </el-form-item>
-        <el-form-item label="问题类型" required>
-          <el-select v-model="importForm.type">
-            <el-option label="客观题" value="OBJECTIVE" />
-            <el-option label="主观题" value="SUBJECTIVE" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="问题内容" required>
-          <el-input 
-            v-model="importForm.content" 
-            type="textarea" 
-            :rows="4"
-            placeholder="标准化后的问题内容"
-          />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="importForm.status">
-            <el-option label="等待答案" value="WAITING_ANSWERS" />
-            <el-option label="已回答" value="ANSWERED" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="关联版本">
-          <el-select v-model="importForm.versionIds" multiple>
-            <el-option 
-              v-for="version in commonStore.versions"
-              :key="version.version"
-              :label="version.version"
-              :value="version.version"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="关联标签">
-          <el-select v-model="importForm.tagNames" multiple>
-            <el-option 
-              v-for="tag in commonStore.tags"
-              :key="tag.tag"
-              :label="tag.tag"
-              :value="tag.tag"
-            />
-          </el-select>
+
+        <el-form-item label="预览内容" v-if="previewData.length > 0">
+          <div style="max-height: 300px; overflow-y: auto; border: 1px solid #dcdfe6; padding: 10px; border-radius: 4px;">
+            <div v-for="(item, index) in previewData.slice(0, 3)" :key="index" style="margin-bottom: 10px; padding: 10px; background: #f5f7fa; border-radius: 4px;">
+              <div><strong>原始问题ID:</strong> {{ item.originalRawQuestionId }}</div>
+              <div><strong>类型:</strong> {{ item.type }}</div>
+              <div><strong>内容:</strong> {{ item.content.substring(0, 100) }}{{ item.content.length > 100 ? '...' : '' }}</div>
+              <div v-if="item.versionIds && item.versionIds.length"><strong>版本:</strong> {{ item.versionIds.join(', ') }}</div>
+              <div v-if="item.tagNames && item.tagNames.length"><strong>标签:</strong> {{ item.tagNames.join(', ') }}</div>
+            </div>
+            <div v-if="previewData.length > 3" style="text-align: center; color: #909399;">
+              ... 共 {{ previewData.length }} 条记录，仅显示前3条
+            </div>
+          </div>
         </el-form-item>
       </el-form>
       
@@ -197,9 +199,10 @@
         <el-button 
           type="primary" 
           :loading="importing"
+          :disabled="previewData.length === 0"
           @click="handleImport"
         >
-          导入
+          导入 ({{ previewData.length }} 条)
         </el-button>
       </template>
     </el-dialog>
@@ -295,6 +298,7 @@ const showTagDialog = ref(false)
 const importing = ref(false)
 const selectedQuestion = ref(null)
 const newTagName = ref('')
+const previewData = ref([])
 
 const filters = reactive({
   type: '',
@@ -312,12 +316,7 @@ const pagination = reactive({
 })
 
 const importForm = reactive({
-  originalRawQuestionId: null,
-  type: 'OBJECTIVE',
-  content: '',
-  status: 'WAITING_ANSWERS',
-  versionIds: [],
-  tagNames: []
+  file: null
 })
 
 const availableTags = computed(() => {
@@ -359,17 +358,84 @@ const resetFilters = () => {
   fetchQuestions()
 }
 
+const handleFileChange = (file) => {
+  importForm.file = file.raw
+  parseJsonFile(file.raw)
+}
+
+const beforeUpload = (file) => {
+  const isJSON = file.type === 'application/json' || file.name.endsWith('.json')
+  const isLt10M = file.size / 1024 / 1024 < 10
+
+  if (!isJSON) {
+    ElMessage.error('只能上传JSON格式文件!')
+    return false
+  }
+  if (!isLt10M) {
+    ElMessage.error('上传文件大小不能超过 10MB!')
+    return false
+  }
+  return false // 阻止自动上传
+}
+
+const parseJsonFile = (file) => {
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const jsonData = JSON.parse(e.target.result)
+      
+      if (!Array.isArray(jsonData)) {
+        ElMessage.error('JSON文件格式错误：根元素必须是数组')
+        previewData.value = []
+        return
+      }
+
+      // 验证数据格式
+      const validatedData = jsonData.map((item, index) => {
+        if (!item.originalRawQuestionId) {
+          throw new Error(`第${index + 1}条记录缺少必需字段: originalRawQuestionId`)
+        }
+        if (!item.type || !['OBJECTIVE', 'SUBJECTIVE'].includes(item.type)) {
+          throw new Error(`第${index + 1}条记录type字段无效，必须是 OBJECTIVE 或 SUBJECTIVE`)
+        }
+        if (!item.content) {
+          throw new Error(`第${index + 1}条记录缺少必需字段: content`)
+        }
+
+        return {
+          originalRawQuestionId: item.originalRawQuestionId,
+          type: item.type,
+          content: item.content,
+          status: item.status || 'WAITING_ANSWERS',
+          versionIds: item.versionIds || [],
+          tagNames: item.tagNames || []
+        }
+      })
+
+      previewData.value = validatedData
+      ElMessage.success(`成功解析 ${validatedData.length} 条标准问题`)
+      
+    } catch (error) {
+      ElMessage.error(`JSON文件解析失败: ${error.message}`)
+      previewData.value = []
+    }
+  }
+  reader.readAsText(file)
+}
+
 const handleImport = async () => {
-  if (!importForm.originalRawQuestionId || !importForm.content) {
-    ElMessage.warning('请填写必需字段')
+  if (previewData.value.length === 0) {
+    ElMessage.warning('请先选择并解析JSON文件')
     return
   }
 
   importing.value = true
   try {
-    const response = await standardQuestionApi.importQuestions([importForm])
-    ElMessage.success('导入成功')
+    const response = await standardQuestionApi.importQuestions(previewData.value)
+    ElMessage.success(`导入成功！共导入 ${previewData.value.length} 条记录`)
     showImportDialog.value = false
+    previewData.value = []
+    importForm.file = null
     fetchQuestions()
   } catch (error) {
     console.error('Import failed:', error)

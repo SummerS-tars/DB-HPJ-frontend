@@ -63,7 +63,8 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="stdQuestionCount" label="标准问题数" width="120" />
+        <!-- Temporarily disabled - standard question module not ready -->
+        <!-- <el-table-column prop="stdQuestionCount" label="标准问题数" width="120" /> -->
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="viewQuestion(row)">查看</el-button>
@@ -212,10 +213,11 @@ const fetchQuestions = async () => {
     }
 
     const response = await rawQuestionApi.getQuestions(params)
-    questions.value = response.data.content
-    totalElements.value = response.data.totalElements
+    questions.value = response.data.data.content
+    totalElements.value = response.data.data.totalElements
   } catch (error) {
     console.error('Failed to fetch questions:', error)
+    ElMessage.error('获取问题列表失败')
   } finally {
     loading.value = false
   }
@@ -238,11 +240,16 @@ const handleImport = async () => {
       importForm.sourcePlatform
     )
     
-    ElMessage.success(`导入完成！成功导入 ${response.data.importedCount} 条记录`)
+    // Handle the response structure properly
+    const result = response.data.data || response.data
+    const importedCount = result.importedCount || result.count || '未知数量'
+    
+    ElMessage.success(`导入完成！成功导入 ${importedCount} 条记录`)
     showImportDialog.value = false
     fetchQuestions()
   } catch (error) {
     console.error('Import failed:', error)
+    ElMessage.error('导入失败，请检查文件格式')
   } finally {
     importing.value = false
   }
@@ -255,6 +262,7 @@ const handleStatusUpdate = async ({ id, status }) => {
     fetchQuestions()
   } catch (error) {
     console.error('Failed to update status:', error)
+    ElMessage.error('状态更新失败')
   }
 }
 
