@@ -32,6 +32,7 @@ import { RouterView } from 'vue-router'
               </template>
               <el-menu-item index="/raw-questions">原始问题</el-menu-item>
               <el-menu-item index="/raw-answers">原始答案</el-menu-item>
+              <el-menu-item index="/stackoverflow-post-ids">StackOverflow Post IDs</el-menu-item>
             </el-sub-menu>
             
             <el-sub-menu index="standard-data">

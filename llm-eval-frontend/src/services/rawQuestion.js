@@ -36,6 +36,26 @@ export const rawQuestionApi = {
   // Get standard questions converted from raw question
   getStandardQuestions(rawQuestionId, params = {}) {
     return api.get(`/raw-questions/${rawQuestionId}/std-questions`, { params })
+  },
+
+  // StackOverflow Post IDs API methods
+  // Get StackOverflow post IDs without answers (with metadata)
+  getStackOverflowPostIds() {
+    return api.get('/raw-questions/stackoverflow/post-ids-without-answers')
+  },
+
+  // Download StackOverflow post IDs (full format with metadata)
+  downloadStackOverflowPostIds() {
+    return api.get('/raw-questions/stackoverflow/post-ids-without-answers/download', {
+      responseType: 'blob'
+    })
+  },
+
+  // Download StackOverflow post IDs (simple format matching document specification)
+  downloadStackOverflowPostIdsSimple() {
+    return api.get('/raw-questions/stackoverflow/post-ids-simple', {
+      responseType: 'blob'
+    })
   }
 }
 

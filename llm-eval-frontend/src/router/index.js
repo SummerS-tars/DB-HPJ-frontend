@@ -4,6 +4,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Home from '@/views/Home.vue'
 import RawQuestionList from '@/views/RawData/RawQuestionList.vue'
 import RawAnswerList from '@/views/RawData/RawAnswerList.vue'
+import StackOverflowPostIds from '@/views/RawData/StackOverflowPostIds.vue'
 import VersionManage from '@/views/StandardData/VersionManage.vue'
 import TagManage from '@/views/StandardData/TagManage.vue'
 import StandardQuestionList from '@/views/StandardData/StandardQuestionList.vue'
@@ -33,6 +34,11 @@ const router = createRouter({
       path: '/raw-answers',
       name: 'raw-answers',
       component: RawAnswerList
+    },
+    {
+      path: '/stackoverflow-post-ids',
+      name: 'stackoverflow-post-ids',
+      component: StackOverflowPostIds
     },
     // Standard Data Routes
     {
