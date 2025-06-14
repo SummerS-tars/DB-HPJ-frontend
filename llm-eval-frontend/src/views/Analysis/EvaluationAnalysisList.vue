@@ -84,7 +84,7 @@
             </el-link>
           </template>
         </el-table-column>
-        <el-table-column prop="standardQuestionTitle" label="问题标题" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="standardQuestionContent" label="问题内容" min-width="200" show-overflow-tooltip />
         <el-table-column prop="evaluationResultId" label="评估结果ID" width="120">
           <template #default="{ row }">
             <el-link 
@@ -304,8 +304,8 @@
           <el-descriptions-item label="评估模型">{{ selectedAnalysisResult.evaluationModel }}</el-descriptions-item>
           <el-descriptions-item label="标准问题ID">{{ selectedAnalysisResult.standardQuestionId }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ formatDate(selectedAnalysisResult.createdAt) }}</el-descriptions-item>
-          <el-descriptions-item label="问题标题" :span="2">
-            {{ selectedAnalysisResult.standardQuestionTitle }}
+          <el-descriptions-item label="问题内容" :span="2">
+            {{ selectedAnalysisResult.standardQuestionContent }}
           </el-descriptions-item>
         </el-descriptions>
 
