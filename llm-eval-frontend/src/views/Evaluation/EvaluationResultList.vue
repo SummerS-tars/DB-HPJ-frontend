@@ -25,7 +25,7 @@
               <el-option 
                 v-for="tag in evaluationTags" 
                 :key="tag.tagId" 
-                :label="`${tag.model} v${tag.dataSetVersion} (${tag.evaluationTime}次)`" 
+                :label="`${tag.model || '未知模型'} v${tag.dataSetVersion || '未知版本'} (${tag.evaluationTime || 0}次)`" 
                 :value="tag.tagId" 
               />
             </el-select>
@@ -126,7 +126,7 @@
             <el-option 
               v-for="tag in evaluationTags" 
               :key="tag.tagId" 
-              :label="`${tag.model} v${tag.dataSetVersion} (${tag.evaluationTime}次)`" 
+              :label="`${tag.model || '未知模型'} v${tag.dataSetVersion || '未知版本'} (${tag.evaluationTime || 0}次)`" 
               :value="tag.tagId" 
             />
           </el-select>
@@ -179,7 +179,7 @@
             <el-option 
               v-for="tag in evaluationTags" 
               :key="tag.tagId" 
-              :label="`${tag.model} v${tag.dataSetVersion} (${tag.evaluationTime}次)`" 
+              :label="`${tag.model || '未知模型'} v${tag.dataSetVersion || '未知版本'} (${tag.evaluationTime || 0}次)`" 
               :value="tag.tagId" 
             />
           </el-select>
@@ -308,9 +308,25 @@ const fetchResults = async () => {
 const fetchEvaluationTags = async () => {
   try {
     const response = await evaluationTagApi.getTags()
-    evaluationTags.value = response.data.data || response.data
+    console.log('Evaluation Tags API Response:', response.data) // Debug log
+    
+    // The API response structure is { success: true, data: { content: [...], ... } }
+    const data = response.data.data || response.data
+    
+    // Handle both paginated and non-paginated responses
+    if (data.content) {
+      // Paginated response
+      evaluationTags.value = data.content
+    } else if (Array.isArray(data)) {
+      // Simple array response
+      evaluationTags.value = data
+    } else {
+      // Fallback
+      evaluationTags.value = []
+    }
   } catch (error) {
     console.error('Failed to fetch evaluation tags:', error)
+    ElMessage.error('获取评估标签失败')
   }
 }
 
