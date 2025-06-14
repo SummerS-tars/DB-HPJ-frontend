@@ -1,0 +1,44 @@
+{
+    "success": true,
+    "data": {
+        "content": [
+            {
+                "id": 1,
+                "evaluationResultId": 7,
+                "analysisTagId": 1,
+                "score": 10,
+                "createdAt": "2025-06-15T04:15:28",
+                "analysisModel": "gpt-4",
+                "evaluationModel": "thesumst-114514",
+                "standardQuestionId": 1,
+                "standardQuestionContent": "Analyze the security implications and effectiveness of using SSH on port 443 for bypassing traffic shaping. Discuss the potential risks and better alternatives."
+            }
+        ],
+        "pageable": {
+            "pageNumber": 0,
+            "pageSize": 20,
+            "sort": {
+                "empty": false,
+                "sorted": true,
+                "unsorted": false
+            },
+            "offset": 0,
+            "paged": true,
+            "unpaged": false
+        },
+        "last": true,
+        "totalPages": 1,
+        "totalElements": 1,
+        "size": 20,
+        "number": 0,
+        "sort": {
+            "empty": false,
+            "sorted": true,
+            "unsorted": false
+        },
+        "first": true,
+        "numberOfElements": 1,
+        "empty": false
+    },
+    "message": null
+}
