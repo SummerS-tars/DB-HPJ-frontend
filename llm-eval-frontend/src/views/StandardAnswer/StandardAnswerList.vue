@@ -56,12 +56,7 @@
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="stdQuestionId" label="标准问题ID" width="120">
           <template #default="{ row }">
-            <el-link 
-              type="primary" 
-              @click="viewStandardQuestion(row.stdQuestionId)"
-            >
-              {{ row.stdQuestionId }}
-            </el-link>
+            {{ row.stdQuestionId }}
           </template>
         </el-table-column>
         <el-table-column prop="type" label="类型" width="100">
@@ -93,14 +88,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="selectedFromCandidateId" label="来源候选答案" width="150">
+        <el-table-column prop="selectedFromCandidateId" label="来源候选答案ID" width="150">
           <template #default="{ row }">
-            <el-link 
-              type="primary" 
-              @click="viewCandidateAnswer(row.selectedFromCandidateId)"
-            >
-              候选答案 #{{ row.selectedFromCandidateId }}
-            </el-link>
+            {{ row.selectedFromCandidateId }}
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="创建时间" width="180">
@@ -147,9 +137,11 @@
     <el-dialog
       v-model="showDetailDialog"
       title="标准答案详情"
-      width="800px"
+      width="900px"
+      max-height="80vh"
     >
       <div v-if="selectedAnswer">
+        <!-- Basic Information -->
         <el-descriptions :column="2" border>
           <el-descriptions-item label="ID">{{ selectedAnswer.id }}</el-descriptions-item>
           <el-descriptions-item label="标准问题ID">{{ selectedAnswer.stdQuestionId }}</el-descriptions-item>
@@ -168,12 +160,98 @@
           </el-descriptions-item>
           <el-descriptions-item label="来源候选答案ID">{{ selectedAnswer.selectedFromCandidateId }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ formatDate(selectedAnswer.createdAt) }}</el-descriptions-item>
-          <el-descriptions-item label="答案内容" :span="2">
-            <div style="max-height: 200px; overflow-y: auto; white-space: pre-wrap;">
-              {{ getAnswerContent(selectedAnswer) }}
+          <el-descriptions-item label="备注">{{ selectedAnswer.notes || '无' }}</el-descriptions-item>
+          <el-descriptions-item label="标准答案内容" :span="2">
+            <div style="padding: 10px; background-color: #f5f7fa; border-radius: 4px;">
+              <pre style="white-space: pre-wrap; word-wrap: break-word; margin: 0;">{{ getAnswerContent(selectedAnswer) }}</pre>
             </div>
           </el-descriptions-item>
         </el-descriptions>
+
+        <!-- Related Standard Question Details -->
+        <el-divider content-position="left">关联标准问题详情</el-divider>
+        <div v-if="selectedAnswer.standardQuestion">
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="问题ID">{{ selectedAnswer.standardQuestion.id }}</el-descriptions-item>
+            <el-descriptions-item label="原始问题ID">{{ selectedAnswer.standardQuestion.originalRawQuestionId }}</el-descriptions-item>
+            <el-descriptions-item label="问题类型">
+              <el-tag :type="selectedAnswer.standardQuestion.type === 'OBJECTIVE' ? 'success' : 'warning'">
+                {{ selectedAnswer.standardQuestion.type === 'OBJECTIVE' ? '客观题' : '主观题' }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="问题状态">
+              <el-tag>{{ selectedAnswer.standardQuestion.status === 'WAITING_ANSWERS' ? '等待答案' : '已回答' }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="创建时间">{{ formatDate(selectedAnswer.standardQuestion.createdAt) }}</el-descriptions-item>
+            <el-descriptions-item label="版本信息">
+              <el-tag 
+                v-for="version in selectedAnswer.standardQuestion.versions" 
+                :key="version.version"
+                size="small"
+                style="margin-right: 5px"
+              >
+                {{ version.version }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="标签" :span="2">
+              <el-tag 
+                v-for="tag in selectedAnswer.standardQuestion.tags" 
+                :key="tag.tag"
+                size="small"
+                type="info"
+                style="margin-right: 5px"
+              >
+                {{ tag.tag }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="标准问题内容" :span="2">
+              <div style="padding: 10px; background-color: #f9f9f9; border-radius: 4px;">
+                <pre style="white-space: pre-wrap; word-wrap: break-word; margin: 0;">{{ selectedAnswer.standardQuestion.content }}</pre>
+              </div>
+            </el-descriptions-item>
+          </el-descriptions>
+
+          <!-- Original Raw Question Details -->
+          <el-divider content-position="left">原始问题详情</el-divider>
+          <div v-if="selectedAnswer.standardQuestion.originalRawQuestion">
+            <el-descriptions :column="2" border>
+              <el-descriptions-item label="原始标题">{{ selectedAnswer.standardQuestion.originalRawQuestion.title }}</el-descriptions-item>
+              <el-descriptions-item label="来源平台">{{ selectedAnswer.standardQuestion.originalRawQuestion.sourcePlatform }}</el-descriptions-item>
+              <el-descriptions-item label="帖子ID">{{ selectedAnswer.standardQuestion.originalRawQuestion.postId }}</el-descriptions-item>
+              <el-descriptions-item label="评分">{{ selectedAnswer.standardQuestion.originalRawQuestion.score }}</el-descriptions-item>
+              <el-descriptions-item label="原始标签" :span="2">{{ selectedAnswer.standardQuestion.originalRawQuestion.tags }}</el-descriptions-item>
+              <el-descriptions-item label="原始问题内容" :span="2">
+                <div style="padding: 10px; background-color: #fafafa; border-radius: 4px;">
+                  <pre style="white-space: pre-wrap; word-wrap: break-word; margin: 0;">{{ selectedAnswer.standardQuestion.originalRawQuestion.content }}</pre>
+                </div>
+              </el-descriptions-item>
+            </el-descriptions>
+          </div>
+        </div>
+
+        <!-- Source Candidate Answer Details -->
+        <el-divider content-position="left">来源候选答案详情</el-divider>
+        <div v-if="selectedAnswer.sourceCandidateAnswer">
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="候选答案ID">{{ selectedAnswer.sourceCandidateAnswer.id }}</el-descriptions-item>
+            <el-descriptions-item label="答案类型">
+              <el-tag :type="selectedAnswer.sourceCandidateAnswer.type === 'OBJECTIVE' ? 'success' : 'warning'">
+                {{ selectedAnswer.sourceCandidateAnswer.type === 'OBJECTIVE' ? '客观题' : '主观题' }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="候选答案状态">{{ selectedAnswer.sourceCandidateAnswer.status }}</el-descriptions-item>
+            <el-descriptions-item label="创建时间">{{ formatDate(selectedAnswer.sourceCandidateAnswer.createdAt) }}</el-descriptions-item>
+            <el-descriptions-item label="候选答案备注" :span="2">{{ selectedAnswer.sourceCandidateAnswer.notes || '无' }}</el-descriptions-item>
+          </el-descriptions>
+          <el-alert type="info" :closable="false" style="margin-top: 10px;">
+            候选答案内容与标准答案内容相同，已在上方标准答案内容中显示
+          </el-alert>
+        </div>
+        <div v-else>
+          <el-alert type="info" :closable="false">
+            候选答案详情不可用
+          </el-alert>
+        </div>
       </div>
     </el-dialog>
 
@@ -280,16 +358,6 @@ const viewAnswer = (answer) => {
   showDetailDialog.value = true
 }
 
-const viewStandardQuestion = (questionId) => {
-  // Navigate to standard question detail
-  window.open(`/std-questions/${questionId}`, '_blank')
-}
-
-const viewCandidateAnswer = (candidateId) => {
-  // Navigate to candidate answer detail
-  window.open(`/candidate-answers/${candidateId}`, '_blank')
-}
-
 const updateScore = (answer) => {
   selectedAnswer.value = answer
   scoreForm.score = answer.score
@@ -331,6 +399,10 @@ const omitAnswer = async (answer) => {
 
 const getAnswerContent = (answer) => {
   return answer.type === 'OBJECTIVE' ? answer.objAnswer : answer.subAnswer
+}
+
+const getCandidateAnswerContent = (candidateAnswer) => {
+  return candidateAnswer.type === 'OBJECTIVE' ? candidateAnswer.objAnswer : candidateAnswer.subAnswer
 }
 
 const formatDate = (dateString) => {
