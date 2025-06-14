@@ -55,7 +55,7 @@
         :loading="loading"
         style="width: 100%; margin-top: 20px"
       >
-        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="tagId" label="ID" width="80" />
         <el-table-column prop="dataSetVersion" label="数据集版本" width="150" />
         <el-table-column prop="evaluationTime" label="评估轮次" width="120" />
         <el-table-column prop="model" label="模型名称" min-width="200" />
@@ -69,7 +69,7 @@
           <template #default="{ row }">
             <el-link 
               type="primary" 
-              @click="viewResults(row.id)"
+              @click="viewResults(row.tagId)"
             >
               {{ row.resultCount || 0 }} 条
             </el-link>
@@ -166,7 +166,7 @@
     >
       <div v-if="selectedTag">
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="ID">{{ selectedTag.id }}</el-descriptions-item>
+          <el-descriptions-item label="ID">{{ selectedTag.tagId }}</el-descriptions-item>
           <el-descriptions-item label="数据集版本">{{ selectedTag.dataSetVersion }}</el-descriptions-item>
           <el-descriptions-item label="评估轮次">{{ selectedTag.evaluationTime }}</el-descriptions-item>
           <el-descriptions-item label="模型名称">{{ selectedTag.model }}</el-descriptions-item>
@@ -182,13 +182,13 @@
         <div style="margin-top: 20px; text-align: center;">
           <el-button 
             type="primary" 
-            @click="viewResults(selectedTag.id)"
+            @click="viewResults(selectedTag.tagId)"
           >
             查看评估结果
           </el-button>
           <el-button 
             type="success" 
-            @click="createAnalysisTag(selectedTag.id)"
+            @click="createAnalysisTag(selectedTag.tagId)"
           >
             创建分析标签
           </el-button>
@@ -263,7 +263,7 @@ const fetchTags = async () => {
     })
 
     const response = await evaluationTagApi.getTags(params)
-    // Fix data access path to match backend response structure
+    // The API response structure is { success: true, data: { content: [...], ... } }
     const data = response.data.data || response.data
     
     // Handle both paginated and non-paginated responses
@@ -335,7 +335,7 @@ const deleteTag = async (tag) => {
       { type: 'warning' }
     )
     
-    await evaluationTagApi.deleteTag(tag.id)
+    await evaluationTagApi.deleteTag(tag.tagId)
     ElMessage.success('评估标签删除成功')
     fetchTags()
   } catch (error) {
