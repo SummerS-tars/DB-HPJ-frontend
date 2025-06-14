@@ -204,10 +204,13 @@ const fetchAnswers = async () => {
     })
 
     const response = await rawAnswerApi.getAnswers(params)
-    answers.value = response.data.content
-    totalElements.value = response.data.totalElements
+    // Fix data access path to match API response structure: { success: true, data: { content: [...], totalElements: N } }
+    const responseData = response.data.data || response.data
+    answers.value = responseData.content || []
+    totalElements.value = responseData.totalElements || 0
   } catch (error) {
     console.error('Failed to fetch answers:', error)
+    ElMessage.error('获取原始答案列表失败')
   } finally {
     loading.value = false
   }
@@ -237,11 +240,15 @@ const handleImport = async () => {
       importForm.sourcePlatform
     )
     
-    ElMessage.success(`导入完成！成功导入 ${response.data.importedCount} 条记录`)
+    // Fix data access path for import response
+    const importResult = response.data.data || response.data
+    const importedCount = importResult.importedCount || importResult.count || '未知数量'
+    ElMessage.success(`导入完成！成功导入 ${importedCount} 条记录`)
     showImportDialog.value = false
     fetchAnswers()
   } catch (error) {
     console.error('Import failed:', error)
+    ElMessage.error('导入失败，请检查文件格式')
   } finally {
     importing.value = false
   }
