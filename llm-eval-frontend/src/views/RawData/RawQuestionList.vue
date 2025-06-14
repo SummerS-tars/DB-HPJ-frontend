@@ -38,6 +38,7 @@
               <el-icon><Search /></el-icon>
               查询
             </el-button>
+            <el-button @click="resetFilters">重置</el-button>
           </el-col>
         </el-row>
       </div>
@@ -185,8 +186,8 @@ const importing = ref(false)
 const selectedQuestion = ref(null)
 
 const filters = reactive({
-  status: '',
-  sourcePlatform: ''
+  status: 'WAITING_CONVERTED',
+  sourcePlatform: 'stackoverflow'
 })
 
 const pagination = reactive({
@@ -209,9 +210,12 @@ const fetchQuestions = async () => {
       size: pagination.size,
       sortBy: pagination.sortBy,
       sortDirection: pagination.sortDirection,
-      ...filters
+      // Always include default required parameters
+      status: filters.status || 'WAITING_CONVERTED',
+      sourcePlatform: filters.sourcePlatform || 'stackoverflow'
     }
 
+    console.log('Raw Questions API Request:', params) // Debug log
     const response = await rawQuestionApi.getQuestions(params)
     questions.value = response.data.data.content
     totalElements.value = response.data.data.totalElements
@@ -264,6 +268,12 @@ const handleStatusUpdate = async ({ id, status }) => {
     console.error('Failed to update status:', error)
     ElMessage.error('状态更新失败')
   }
+}
+
+const resetFilters = () => {
+  filters.status = 'WAITING_CONVERTED'
+  filters.sourcePlatform = 'stackoverflow'
+  fetchQuestions()
 }
 
 const viewQuestion = (question) => {
