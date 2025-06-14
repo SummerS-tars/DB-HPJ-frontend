@@ -67,7 +67,13 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="content" label="问题内容" min-width="300" show-overflow-tooltip />
+        <el-table-column label="问题内容" min-width="300">
+          <template #default="{ row }">
+            <div style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              {{ row.content.substring(0, 100) }}{{ row.content.length > 100 ? '...' : '' }}
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="120">
           <template #default="{ row }">
             <el-tag 
@@ -115,7 +121,7 @@
         </el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="viewQuestion(row)">查看</el-button>
+            <el-button size="small" @click="viewQuestion(row)">详情</el-button>
             <el-button size="small" type="primary" @click="manageTags(row)">
               标签
             </el-button>
@@ -211,7 +217,8 @@
     <el-dialog
       v-model="showDetailDialog"
       title="标准问题详情"
-      width="800px"
+      width="900px"
+      max-height="80vh"
     >
       <div v-if="selectedQuestion">
         <el-descriptions :column="2" border>
@@ -226,15 +233,71 @@
               {{ selectedQuestion.status === 'ANSWERED' ? '已回答' : '等待答案' }}
             </el-tag>
           </el-descriptions-item>
+          <el-descriptions-item label="创建时间">
+            {{ formatDate(selectedQuestion.createdAt) }}
+          </el-descriptions-item>
           <el-descriptions-item label="原始问题ID">
-            {{ selectedQuestion.originalRawQuestionId }}
+            <el-link 
+              type="primary" 
+              @click="viewRawQuestion(selectedQuestion.originalRawQuestionId)"
+            >
+              {{ selectedQuestion.originalRawQuestionId }}
+            </el-link>
+          </el-descriptions-item>
+          <el-descriptions-item label="版本信息">
+            <el-tag 
+              v-for="version in selectedQuestion.versions" 
+              :key="version.version"
+              size="small"
+              style="margin-right: 5px"
+            >
+              {{ version.version }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="标签" :span="2">
+            <el-tag 
+              v-for="tag in selectedQuestion.tags" 
+              :key="tag.tag"
+              size="small"
+              type="info"
+              style="margin-right: 5px"
+            >
+              {{ tag.tag }}
+            </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="问题内容" :span="2">
-            <div style="max-height: 200px; overflow-y: auto;">
-              {{ selectedQuestion.content }}
+            <div style="max-height: 300px; overflow-y: auto; padding: 10px; background-color: #f5f7fa; border-radius: 4px;">
+              <pre style="white-space: pre-wrap; word-wrap: break-word; margin: 0;">{{ selectedQuestion.content }}</pre>
             </div>
           </el-descriptions-item>
         </el-descriptions>
+
+        <!-- Original Raw Question Details -->
+        <el-divider content-position="left">原始问题详情</el-divider>
+        <div v-if="selectedQuestion.originalRawQuestion">
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="原始标题">
+              {{ selectedQuestion.originalRawQuestion.title }}
+            </el-descriptions-item>
+            <el-descriptions-item label="来源平台">
+              {{ selectedQuestion.originalRawQuestion.sourcePlatform }}
+            </el-descriptions-item>
+            <el-descriptions-item label="帖子ID">
+              {{ selectedQuestion.originalRawQuestion.postId }}
+            </el-descriptions-item>
+            <el-descriptions-item label="评分">
+              {{ selectedQuestion.originalRawQuestion.score }}
+            </el-descriptions-item>
+            <el-descriptions-item label="原始标签" :span="2">
+              {{ selectedQuestion.originalRawQuestion.tags }}
+            </el-descriptions-item>
+            <el-descriptions-item label="原始内容" :span="2">
+              <div style="max-height: 200px; overflow-y: auto; padding: 10px; background-color: #f9f9f9; border-radius: 4px;">
+                <pre style="white-space: pre-wrap; word-wrap: break-word; margin: 0;">{{ selectedQuestion.originalRawQuestion.content }}</pre>
+              </div>
+            </el-descriptions-item>
+          </el-descriptions>
+        </div>
       </div>
     </el-dialog>
 
@@ -342,10 +405,15 @@ const fetchQuestions = async () => {
     })
 
     const response = await standardQuestionApi.getQuestions(params)
-    questions.value = response.data.content
-    totalElements.value = response.data.totalElements
+    console.log('API Response:', response.data) // Debug log
+    
+    // Fix data access path to match API response structure
+    const responseData = response.data.data || response.data
+    questions.value = responseData.content || []
+    totalElements.value = responseData.totalElements || 0
   } catch (error) {
     console.error('Failed to fetch questions:', error)
+    ElMessage.error('获取标准问题列表失败')
   } finally {
     loading.value = false
   }
@@ -495,6 +563,11 @@ const removeTag = async (tagName) => {
   } catch (error) {
     console.error('Failed to remove tag:', error)
   }
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return ''
+  return new Date(dateString).toLocaleString('zh-CN')
 }
 
 onMounted(async () => {
