@@ -116,12 +116,7 @@
         </el-table-column>
         <el-table-column label="原始问题ID" width="120">
           <template #default="{ row }">
-            <el-link 
-              type="primary" 
-              @click="viewRawQuestion(row.originalRawQuestionId)"
-            >
-              {{ row.originalRawQuestionId }}
-            </el-link>
+            {{ row.originalRawQuestionId }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
