@@ -75,7 +75,7 @@ export const analysisTagApi = {
     return api.post('/analysis-tags', data)
   },
 
-  // Get analysis tags list
+  // Get analysis tags list (paginated)
   getTags(params = {}) {
     return api.get('/analysis-tags', { params })
   },
@@ -83,6 +83,16 @@ export const analysisTagApi = {
   // Get single analysis tag
   getTag(analysisTagId) {
     return api.get(`/analysis-tags/${analysisTagId}`)
+  },
+
+  // Get analysis tags by evaluation tag ID
+  getTagsByEvaluationTag(evaluationTagId) {
+    return api.get(`/analysis-tags/by-evaluation-tag/${evaluationTagId}`)
+  },
+
+  // Get analysis tags by model
+  getTagsByModel(model) {
+    return api.get('/analysis-tags/by-model', { params: { model } })
   },
 
   // Update analysis tag
@@ -97,30 +107,38 @@ export const analysisTagApi = {
 }
 
 export const evaluationAnalysisApi = {
-  // Import evaluation analysis
-  importAnalysis(file, analysisTagId) {
-    const formData = new FormData()
-    formData.append('file', file)
-    return api.post('/evaluation-analysis/import', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      },
-      params: { analysisTagId }
-    })
+  // Import evaluation analysis results (batch)
+  importAnalysis(data) {
+    return api.post('/evaluation-analysis/import', data)
   },
 
-  // Get evaluation analysis list
+  // Get evaluation analysis list (paginated)
   getAnalysis(params = {}) {
     return api.get('/evaluation-analysis', { params })
   },
 
-  // Get single evaluation analysis
+  // Get single evaluation analysis result
   getAnalysisResult(id) {
     return api.get(`/evaluation-analysis/${id}`)
   },
 
-  // Update evaluation analysis
-  updateAnalysis(id, data) {
-    return api.put(`/evaluation-analysis/${id}`, data)
+  // Get analysis results by analysis tag ID
+  getAnalysisByTag(analysisTagId, params = {}) {
+    return api.get(`/evaluation-analysis/by-tag/${analysisTagId}`, { params })
+  },
+
+  // Get overall analysis statistics
+  getStatistics() {
+    return api.get('/evaluation-analysis/statistics')
+  },
+
+  // Get analysis statistics by analysis tag ID
+  getStatisticsByTag(analysisTagId) {
+    return api.get(`/evaluation-analysis/statistics/by-tag/${analysisTagId}`)
+  },
+
+  // Delete evaluation analysis result
+  deleteAnalysisResult(id) {
+    return api.delete(`/evaluation-analysis/${id}`)
   }
 } 
