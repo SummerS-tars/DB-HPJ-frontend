@@ -40,6 +40,26 @@ export const standardQuestionApi = {
     return api.get(`/std-questions/${id}`)
   },
 
+  // Export standard questions
+  async exportQuestions(type, version, tag) {
+    const params = new URLSearchParams({ type, version })
+    if (tag) {
+      params.append('tag', tag)
+    }
+    const response = await fetch(`/api/v1/std-questions/export?${params}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Export failed: ${response.statusText}`)
+    }
+    
+    return response
+  },
+
   // Add tag to standard question
   addTag(id, tagName) {
     return api.post(`/std-questions/${id}/tags`, { tagName })

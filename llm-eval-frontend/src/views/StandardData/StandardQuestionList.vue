@@ -4,10 +4,15 @@
       <template #header>
         <div class="header-content">
           <h2>标准问题管理</h2>
-          <el-button type="primary" @click="showImportDialog = true">
-            <el-icon><Plus /></el-icon>
-            导入标准问题
-          </el-button>
+          <div class="header-buttons">
+            <el-button type="success" @click="showExportDialog = true">
+              📤 导出标准问题
+            </el-button>
+            <el-button type="primary" @click="showImportDialog = true">
+              <el-icon><Plus /></el-icon>
+              导入标准问题
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -213,6 +218,64 @@
       </template>
     </el-dialog>
 
+    <!-- Export Dialog -->
+    <el-dialog
+      v-model="showExportDialog"
+      title="导出标准问题"
+      width="500px"
+    >
+      <el-form :model="exportForm" label-width="100px">
+        <el-form-item label="问题类型" required>
+          <el-select v-model="exportForm.type" placeholder="选择问题类型" style="width: 100%">
+            <el-option label="客观题" value="OBJECTIVE" />
+            <el-option label="主观题" value="SUBJECTIVE" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="版本" required>
+          <el-select v-model="exportForm.version" placeholder="选择版本" style="width: 100%">
+            <el-option 
+              v-for="version in commonStore.versions" 
+              :key="version.version"
+              :label="version.version" 
+              :value="version.version" 
+            />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="标签" label-suffix="(可选)">
+          <el-select v-model="exportForm.tag" placeholder="选择标签（可选）" clearable style="width: 100%">
+            <el-option 
+              v-for="tag in commonStore.tags"
+              :key="tag.tag"
+              :label="tag.tag"
+              :value="tag.tag"
+            />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="预览文件名">
+          <el-input 
+            :value="generateFilename()" 
+            readonly 
+            style="width: 100%"
+          />
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <el-button @click="showExportDialog = false">取消</el-button>
+        <el-button 
+          type="primary" 
+          :loading="exporting"
+          :disabled="!canExport"
+          @click="handleExport"
+        >
+          导出
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- Question Detail Dialog -->
     <el-dialog
       v-model="showDetailDialog"
@@ -356,9 +419,11 @@ const questions = ref([])
 const loading = ref(false)
 const totalElements = ref(0)
 const showImportDialog = ref(false)
+const showExportDialog = ref(false)
 const showDetailDialog = ref(false)
 const showTagDialog = ref(false)
 const importing = ref(false)
+const exporting = ref(false)
 const selectedQuestion = ref(null)
 const newTagName = ref('')
 const previewData = ref([])
@@ -382,11 +447,29 @@ const importForm = reactive({
   file: null
 })
 
+const exportForm = reactive({
+  type: '',
+  version: '',
+  tag: ''
+})
+
 const availableTags = computed(() => {
   if (!selectedQuestion.value) return commonStore.tags
   const currentTags = selectedQuestion.value.tags.map(t => t.tag)
   return commonStore.tags.filter(tag => !currentTags.includes(tag.tag))
 })
+
+const canExport = computed(() => {
+  return exportForm.type && exportForm.version
+})
+
+const generateFilename = () => {
+  if (!canExport.value) return '请选择所有必需参数'
+  const type = exportForm.type.toLowerCase()
+  const version = exportForm.version
+  const tag = exportForm.tag ? exportForm.tag.toLowerCase() : 'all'
+  return `${version}_${type}_${tag}.json`
+}
 
 const fetchQuestions = async () => {
   loading.value = true
@@ -514,6 +597,57 @@ const handleImport = async () => {
   }
 }
 
+const handleExport = async () => {
+  if (!canExport.value) {
+    ElMessage.warning('请选择类型和版本参数')
+    return
+  }
+
+  exporting.value = true
+  try {
+    const response = await standardQuestionApi.exportQuestions(
+      exportForm.type,
+      exportForm.version,
+      exportForm.tag
+    )
+
+    // Get filename from Content-Disposition header or generate it
+    const contentDisposition = response.headers.get('Content-Disposition')
+    let filename = generateFilename()
+    
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="(.+)"/)
+      if (filenameMatch) {
+        filename = filenameMatch[1]
+      }
+    }
+
+    // Create blob and trigger download
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+
+    ElMessage.success('导出成功！')
+    showExportDialog.value = false
+    
+    // Reset export form
+    exportForm.type = ''
+    exportForm.version = ''
+    exportForm.tag = ''
+  } catch (error) {
+    console.error('Export failed:', error)
+    ElMessage.error('导出失败：' + (error.message || '未知错误'))
+  } finally {
+    exporting.value = false
+  }
+}
+
 const viewQuestion = (question) => {
   selectedQuestion.value = question
   showDetailDialog.value = true
@@ -592,5 +726,10 @@ onMounted(async () => {
 
 .filters {
   margin-bottom: 20px;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 10px;
 }
 </style> 
