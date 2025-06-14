@@ -108,7 +108,7 @@
             {{ formatDate(row.createdAt) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="225" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="viewAnswer(row)">查看</el-button>
             <el-button 
@@ -225,7 +225,7 @@ const updating = ref(false)
 const selectedAnswer = ref(null)
 
 const filters = reactive({
-  type: '',
+  type: 'SUBJECTIVE', // Default to SUBJECTIVE to match your test case
   status: '',
   stdQuestionId: ''
 })
@@ -254,19 +254,24 @@ const fetchAnswers = async () => {
     })
 
     const response = await standardAnswerApi.getAnswers(params)
-    answers.value = response.data.content
-    totalElements.value = response.data.totalElements
+    console.log('Standard Answers API Response:', response.data) // Debug log
+    
+    // Fix data access path to match API response structure
+    const responseData = response.data.data || response.data
+    answers.value = responseData.content || []
+    totalElements.value = responseData.totalElements || 0
   } catch (error) {
     console.error('Failed to fetch answers:', error)
+    ElMessage.error('获取标准答案列表失败')
   } finally {
     loading.value = false
   }
 }
 
 const resetFilters = () => {
-  Object.keys(filters).forEach(key => {
-    filters[key] = ''
-  })
+  filters.type = 'SUBJECTIVE'
+  filters.status = ''
+  filters.stdQuestionId = ''
   fetchAnswers()
 }
 

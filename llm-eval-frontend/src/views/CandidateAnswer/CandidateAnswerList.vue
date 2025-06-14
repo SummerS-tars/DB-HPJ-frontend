@@ -230,12 +230,12 @@
             {{ selectedAnswer.notes || '无' }}
           </el-descriptions-item>
           <el-descriptions-item label="关联问题内容" :span="2">
-            <div style="max-height: 150px; overflow-y: auto; padding: 10px; background-color: #f9f9f9; border-radius: 4px;">
+            <div style="padding: 10px; background-color: #f9f9f9; border-radius: 4px;">
               <pre style="white-space: pre-wrap; word-wrap: break-word; margin: 0;">{{ selectedAnswer.questionContent || '无问题内容' }}</pre>
             </div>
           </el-descriptions-item>
           <el-descriptions-item label="答案内容" :span="2">
-            <div style="max-height: 200px; overflow-y: auto; padding: 10px; background-color: #f5f7fa; border-radius: 4px;">
+            <div style="padding: 10px; background-color: #f5f7fa; border-radius: 4px;">
               <pre style="white-space: pre-wrap; word-wrap: break-word; margin: 0;">{{ getAnswerContent(selectedAnswer) }}</pre>
             </div>
           </el-descriptions-item>
