@@ -4,10 +4,16 @@
       <template #header>
         <div class="header-content">
           <h2>原始问题管理</h2>
-          <el-button type="primary" @click="showImportDialog = true">
-            <el-icon><Upload /></el-icon>
-            导入问题
-          </el-button>
+          <div class="header-actions">
+            <el-button type="success" @click="showExportDialog = true">
+              <el-icon><Download /></el-icon>
+              导出问题
+            </el-button>
+            <el-button type="primary" @click="showImportDialog = true">
+              <el-icon><Upload /></el-icon>
+              导入问题
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -143,6 +149,83 @@
       </template>
     </el-dialog>
 
+    <!-- Export Dialog -->
+    <el-dialog
+      v-model="showExportDialog"
+      title="导出原始问题"
+      width="600px"
+    >
+      <el-form :model="exportForm" label-width="140px">
+        <el-form-item label="导出范围">
+          <el-radio-group v-model="exportForm.includeConverted">
+            <el-radio :label="false">仅等待转换的问题</el-radio>
+            <el-radio :label="true">包含已转换的问题</el-radio>
+          </el-radio-group>
+          <div class="form-tip">
+            默认只导出状态为"等待转换"的问题，用于标准化处理
+          </div>
+        </el-form-item>
+        
+        <el-form-item label="数量限制">
+          <el-switch 
+            v-model="exportForm.enableLimit" 
+            active-text="启用限制"
+            inactive-text="导出全部"
+          />
+        </el-form-item>
+        
+        <el-form-item v-if="exportForm.enableLimit" label="导出数量">
+          <el-input-number 
+            v-model="exportForm.limit" 
+            :min="1" 
+            :max="10000"
+            placeholder="请输入导出数量"
+            style="width: 200px"
+          />
+          <div class="form-tip">
+            限制导出的问题数量，按ID升序排列
+          </div>
+        </el-form-item>
+
+        <el-form-item label="文件名">
+          <el-input 
+            :value="exportFileName" 
+            readonly
+            style="width: 300px"
+          />
+          <div class="form-tip">
+            固定文件名，用于标准化处理流程
+          </div>
+        </el-form-item>
+
+        <el-form-item label="预览信息">
+          <el-descriptions :column="1" size="small" border>
+            <el-descriptions-item label="导出范围">
+              {{ exportForm.includeConverted ? '等待转换 + 已转换' : '仅等待转换' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="数量限制">
+              {{ exportForm.enableLimit ? `最多 ${exportForm.limit} 个问题` : '全部符合条件的问题' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="排序方式">
+              按ID升序排列
+            </el-descriptions-item>
+          </el-descriptions>
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <el-button @click="showExportDialog = false">取消</el-button>
+        <el-button 
+          type="success" 
+          :loading="exporting"
+          @click="handleExport"
+        >
+          <el-icon><Download /></el-icon>
+          开始导出
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- Question Detail Dialog -->
     <el-dialog
       v-model="showDetailDialog"
@@ -173,7 +256,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { rawQuestionApi } from '@/services/rawQuestion'
 
@@ -181,8 +264,10 @@ const questions = ref([])
 const loading = ref(false)
 const totalElements = ref(0)
 const showImportDialog = ref(false)
+const showExportDialog = ref(false)
 const showDetailDialog = ref(false)
 const importing = ref(false)
+const exporting = ref(false)
 const selectedQuestion = ref(null)
 
 const filters = reactive({
@@ -201,6 +286,14 @@ const importForm = reactive({
   sourcePlatform: 'stackoverflow',
   file: null
 })
+
+const exportForm = reactive({
+  includeConverted: false,
+  enableLimit: false,
+  limit: 100
+})
+
+const exportFileName = computed(() => 'raw_questions_for_standardize.json')
 
 const fetchQuestions = async () => {
   loading.value = true
@@ -256,6 +349,36 @@ const handleImport = async () => {
     ElMessage.error('导入失败，请检查文件格式')
   } finally {
     importing.value = false
+  }
+}
+
+const handleExport = async () => {
+  exporting.value = true
+  try {
+    const limit = exportForm.enableLimit ? exportForm.limit : null
+    const response = await rawQuestionApi.exportQuestions(
+      exportForm.includeConverted,
+      limit
+    )
+    
+    // Create download link
+    const blob = new Blob([response.data], { type: 'application/json' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = exportFileName.value
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    ElMessage.success('导出成功！文件已开始下载')
+    showExportDialog.value = false
+  } catch (error) {
+    console.error('Export failed:', error)
+    ElMessage.error('导出失败: ' + (error.response?.data?.message || error.message || '未知错误'))
+  } finally {
+    exporting.value = false
   }
 }
 
@@ -315,7 +438,19 @@ onMounted(() => {
   margin: 0;
 }
 
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
 .filters {
   margin-bottom: 20px;
+}
+
+.form-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+  line-height: 1.4;
 }
 </style> 

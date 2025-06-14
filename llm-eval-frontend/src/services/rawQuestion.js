@@ -56,6 +56,24 @@ export const rawQuestionApi = {
     return api.get('/raw-questions/stackoverflow/post-ids-simple', {
       responseType: 'blob'
     })
+  },
+
+  // Export raw questions for standardization
+  exportQuestions(includeConverted = false, limit = null) {
+    const params = {}
+    
+    if (includeConverted) {
+      params.includeConverted = 'true'
+    }
+    
+    if (limit && limit > 0) {
+      params.limit = limit.toString()
+    }
+    
+    return api.get('/raw-questions/export', {
+      params,
+      responseType: 'blob'
+    })
   }
 }
 
