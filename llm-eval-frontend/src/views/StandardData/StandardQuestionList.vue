@@ -8,6 +8,9 @@
             <el-button type="success" @click="showExportDialog = true">
               📤 导出标准问题
             </el-button>
+            <el-button type="warning" @click="showExportQADialog = true">
+              📤 导出问题和答案
+            </el-button>
             <el-button type="primary" @click="showImportDialog = true">
               <el-icon><Plus /></el-icon>
               导入标准问题
@@ -271,6 +274,74 @@
       </template>
     </el-dialog>
 
+    <!-- Export Questions & Answers Dialog -->
+    <el-dialog
+      v-model="showExportQADialog"
+      title="导出标准问题和答案"
+      width="500px"
+    >
+      <el-alert
+        title="导出说明"
+        type="info"
+        style="margin-bottom: 20px"
+        :closable="false"
+      >
+        <p>此功能将导出标准问题及其对应的已接受答案，格式为包含问题和答案的综合JSON文件。</p>
+        <p><strong>注意：</strong>只有包含已接受答案的问题才会被导出。</p>
+      </el-alert>
+
+      <el-form :model="exportQAForm" label-width="100px">
+        <el-form-item label="问题类型" required>
+          <el-select v-model="exportQAForm.type" placeholder="选择问题类型" style="width: 100%">
+            <el-option label="客观题" value="OBJECTIVE" />
+            <el-option label="主观题" value="SUBJECTIVE" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="版本" required>
+          <el-select v-model="exportQAForm.version" placeholder="选择版本" style="width: 100%">
+            <el-option 
+              v-for="version in commonStore.versions" 
+              :key="version.version"
+              :label="version.version" 
+              :value="version.version" 
+            />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="标签" label-suffix="(可选)">
+          <el-select v-model="exportQAForm.tag" placeholder="选择标签（可选）" clearable style="width: 100%">
+            <el-option 
+              v-for="tag in commonStore.tags"
+              :key="tag.tag"
+              :label="tag.tag"
+              :value="tag.tag"
+            />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="预览文件名">
+          <el-input 
+            :value="generateQAFilename()" 
+            readonly 
+            style="width: 100%"
+          />
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <el-button @click="showExportQADialog = false">取消</el-button>
+        <el-button 
+          type="primary" 
+          :loading="exportingQA"
+          :disabled="!canExportQA"
+          @click="handleExportQA"
+        >
+          导出问题和答案
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- Question Detail Dialog -->
     <el-dialog
       v-model="showDetailDialog"
@@ -415,10 +486,12 @@ const loading = ref(false)
 const totalElements = ref(0)
 const showImportDialog = ref(false)
 const showExportDialog = ref(false)
+const showExportQADialog = ref(false)
 const showDetailDialog = ref(false)
 const showTagDialog = ref(false)
 const importing = ref(false)
 const exporting = ref(false)
+const exportingQA = ref(false)
 const selectedQuestion = ref(null)
 const newTagName = ref('')
 const previewData = ref([])
@@ -448,6 +521,12 @@ const exportForm = reactive({
   tag: ''
 })
 
+const exportQAForm = reactive({
+  type: '',
+  version: '',
+  tag: ''
+})
+
 const availableTags = computed(() => {
   if (!selectedQuestion.value) return commonStore.tags
   const currentTags = selectedQuestion.value.tags.map(t => t.tag)
@@ -458,12 +537,24 @@ const canExport = computed(() => {
   return exportForm.type && exportForm.version
 })
 
+const canExportQA = computed(() => {
+  return exportQAForm.type && exportQAForm.version
+})
+
 const generateFilename = () => {
   if (!canExport.value) return '请选择所有必需参数'
   const type = exportForm.type.toLowerCase()
   const version = exportForm.version
   const tag = exportForm.tag ? exportForm.tag.toLowerCase() : 'all'
   return `${version}_${type}_${tag}.json`
+}
+
+const generateQAFilename = () => {
+  if (!canExportQA.value) return '请选择所有必需参数'
+  const type = exportQAForm.type.toLowerCase()
+  const version = exportQAForm.version
+  const tag = exportQAForm.tag ? `_${exportQAForm.tag.toLowerCase()}` : ''
+  return `${version}_${type}${tag}_std_q_a.json`
 }
 
 const fetchQuestions = async () => {
@@ -640,6 +731,57 @@ const handleExport = async () => {
     ElMessage.error('导出失败：' + (error.message || '未知错误'))
   } finally {
     exporting.value = false
+  }
+}
+
+const handleExportQA = async () => {
+  if (!canExportQA.value) {
+    ElMessage.warning('请选择类型和版本参数')
+    return
+  }
+
+  exportingQA.value = true
+  try {
+    const response = await standardQuestionApi.exportQuestionsWithAnswers(
+      exportQAForm.type,
+      exportQAForm.version,
+      exportQAForm.tag || null
+    )
+
+    // Get filename from Content-Disposition header or generate it
+    const contentDisposition = response.headers.get('Content-Disposition')
+    let filename = generateQAFilename()
+    
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="(.+)"/)
+      if (filenameMatch) {
+        filename = filenameMatch[1]
+      }
+    }
+
+    // Create blob and trigger download
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+
+    ElMessage.success('导出问题和答案成功！')
+    showExportQADialog.value = false
+    
+    // Reset export form
+    exportQAForm.type = ''
+    exportQAForm.version = ''
+    exportQAForm.tag = ''
+  } catch (error) {
+    console.error('Export Q&A failed:', error)
+    ElMessage.error('导出失败：' + (error.message || '未知错误'))
+  } finally {
+    exportingQA.value = false
   }
 }
 

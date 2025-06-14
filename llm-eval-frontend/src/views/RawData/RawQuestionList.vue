@@ -130,7 +130,7 @@
             <el-button type="primary">选择文件</el-button>
             <template #tip>
               <div class="el-upload__tip">
-                支持XML格式文件，文件大小不超过50MB
+                支持CSV格式文件，文件大小不超过50MB
               </div>
             </template>
           </el-upload>

@@ -113,7 +113,7 @@
             <el-button type="primary">选择文件</el-button>
             <template #tip>
               <div class="el-upload__tip">
-                支持XML格式文件，需要包含ParentId字段关联原始问题
+                支持CSV格式文件，需要包含ParentId字段关联原始问题
               </div>
             </template>
           </el-upload>

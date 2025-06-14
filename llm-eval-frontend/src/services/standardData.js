@@ -60,6 +60,36 @@ export const standardQuestionApi = {
     return response
   },
 
+  // Export standard questions with answers
+  async exportQuestionsWithAnswers(type, version, tag = null) {
+    const params = new URLSearchParams({
+      type: type,
+      version: version
+    })
+    
+    if (tag) {
+      params.append('tag', tag)
+    }
+    
+    try {
+      const response = await fetch(`/api/v1/std-questions/export-with-answers?${params}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.statusText}`)
+      }
+      
+      return response
+    } catch (error) {
+      console.error('Export questions with answers failed:', error)
+      throw error
+    }
+  },
+
   // Add tag to standard question
   addTag(id, tagName) {
     return api.post(`/std-questions/${id}/tags`, { tagName })
