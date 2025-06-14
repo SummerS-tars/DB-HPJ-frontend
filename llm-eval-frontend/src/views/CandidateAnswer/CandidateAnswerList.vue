@@ -86,7 +86,7 @@
                 type="success"
                 @click="acceptAnswer(row)"
               >
-                接受 (创建标准答案)
+                接受
               </el-button>
               <el-button 
                 v-if="row.status === 'PENDING'"
@@ -223,12 +223,41 @@
               {{ getStatusText(selectedAnswer.status) }}
             </el-tag>
           </el-descriptions-item>
+          <el-descriptions-item label="创建时间">
+            {{ formatDate(selectedAnswer.createdAt) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="备注">
+            {{ selectedAnswer.notes || '无' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="关联问题内容" :span="2">
+            <div style="max-height: 150px; overflow-y: auto; padding: 10px; background-color: #f9f9f9; border-radius: 4px;">
+              <pre style="white-space: pre-wrap; word-wrap: break-word; margin: 0;">{{ selectedAnswer.questionContent || '无问题内容' }}</pre>
+            </div>
+          </el-descriptions-item>
           <el-descriptions-item label="答案内容" :span="2">
-            <div style="max-height: 200px; overflow-y: auto;">
-              {{ getAnswerContent(selectedAnswer) }}
+            <div style="max-height: 200px; overflow-y: auto; padding: 10px; background-color: #f5f7fa; border-radius: 4px;">
+              <pre style="white-space: pre-wrap; word-wrap: break-word; margin: 0;">{{ getAnswerContent(selectedAnswer) }}</pre>
             </div>
           </el-descriptions-item>
         </el-descriptions>
+        
+        <!-- Action buttons for PENDING answers -->
+        <div v-if="selectedAnswer && selectedAnswer.status === 'PENDING'" style="margin-top: 20px; text-align: center;">
+          <el-button 
+            type="success" 
+            @click="acceptAnswerFromDetail"
+            :loading="updating"
+          >
+            接受答案
+          </el-button>
+          <el-button 
+            type="danger" 
+            @click="rejectAnswerFromDetail"
+            :loading="updating"
+          >
+            拒绝答案
+          </el-button>
+        </div>
       </div>
     </el-dialog>
 
@@ -276,12 +305,13 @@ const showDetailDialog = ref(false)
 const showAcceptDialog = ref(false)
 const importing = ref(false)
 const accepting = ref(false)
+const updating = ref(false)
 const selectedAnswer = ref(null)
 const selectedRows = ref([])
 
 const filters = reactive({
-  type: 'OBJECTIVE',
-  status: '',
+  type: 'SUBJECTIVE', // Default to SUBJECTIVE to match your test case
+  status: 'PENDING',  // Default to PENDING to match your test case
   stdQuestionId: ''
 })
 
@@ -399,19 +429,24 @@ const fetchAnswers = async () => {
     })
 
     const response = await candidateAnswerApi.getAnswers(params)
-    answers.value = response.data.content
-    totalElements.value = response.data.totalElements
+    console.log('Candidate Answers API Response:', response.data) // Debug log
+    
+    // Fix data access path to match API response structure
+    const responseData = response.data.data || response.data
+    answers.value = responseData.content || []
+    totalElements.value = responseData.totalElements || 0
   } catch (error) {
     console.error('Failed to fetch answers:', error)
+    ElMessage.error('获取候选答案列表失败')
   } finally {
     loading.value = false
   }
 }
 
 const resetFilters = () => {
-  Object.keys(filters).forEach(key => {
-    filters[key] = ''
-  })
+  filters.type = 'SUBJECTIVE'
+  filters.status = 'PENDING'
+  filters.stdQuestionId = ''
   fetchAnswers()
 }
 
@@ -432,11 +467,23 @@ const handleImport = async () => {
       importForm.type
     )
     
-    ElMessage.success(`导入完成！成功导入 ${response.data.importedCount} 条记录`)
+    console.log('Import Response:', response.data) // Debug log
+    
+    // Fix data access path to match API response structure
+    const responseData = response.data.data || response.data
+    const importedCount = responseData.importedCount || 0
+    
+    ElMessage.success(`导入完成！成功导入 ${importedCount} 条记录`)
     showImportDialog.value = false
+    
+    // Reset import form
+    importForm.file = null
+    importForm.type = 'OBJECTIVE'
+    
     fetchAnswers()
   } catch (error) {
     console.error('Import failed:', error)
+    ElMessage.error('导入失败，请检查文件格式')
   } finally {
     importing.value = false
   }
@@ -484,6 +531,33 @@ const rejectAnswer = async (answer) => {
     if (error !== 'cancel') {
       console.error('Failed to reject answer:', error)
     }
+  }
+}
+
+// Accept answer from detail dialog
+const acceptAnswerFromDetail = () => {
+  acceptAnswer(selectedAnswer.value)
+}
+
+// Reject answer from detail dialog
+const rejectAnswerFromDetail = async () => {
+  try {
+    await ElMessageBox.confirm('确定要拒绝这个候选答案吗？', '确认拒绝', {
+      type: 'warning'
+    })
+    
+    updating.value = true
+    await candidateAnswerApi.updateAnswer(selectedAnswer.value.id, { status: 'REJECTED' })
+    ElMessage.success('候选答案已拒绝')
+    showDetailDialog.value = false
+    fetchAnswers()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('Failed to reject answer:', error)
+      ElMessage.error('拒绝失败，请重试')
+    }
+  } finally {
+    updating.value = false
   }
 }
 
