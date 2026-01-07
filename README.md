@@ -159,7 +159,13 @@ DB-HPJ-frontend/
 可在 `llm-eval-frontend/src/services/api.js` 中修改配置：
 
 ```javascript
-const API_BASE_URL = 'http://localhost:8080/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
+```
+
+推荐使用环境变量配置不同环境的 API 地址，在项目根目录创建 `.env.local` 文件：
+
+```bash
+VITE_API_BASE_URL=http://your-api-server:8080/api/v1
 ```
 
 ## 📖 文档
